@@ -1,9 +1,5 @@
 # Retail Data Warehouse & Sales Analytics Platform
 
-<p align="center">
-  <img src="docs/images/spongebob_data_engineer.png" alt="SpongeBob Data Engineer" width="400"/>
-</p>
-
 [![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![PostgreSQL](https://img.shields.io/badge/postgres-16-blue.svg)](https://www.postgresql.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-1.0.0-green.svg)](https://fastapi.tiangolo.com/)
