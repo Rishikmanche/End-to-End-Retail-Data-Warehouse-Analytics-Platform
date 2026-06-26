@@ -1,0 +1,88 @@
+# =============================================================================
+# Retail Data Warehouse — .gitignore
+# =============================================================================
+
+# ---- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# ---- Testing & Coverage ----------------------------------------------------
+.pytest_cache/
+.coverage
+htmlcov/
+reports/
+*.cover
+
+# ---- Linting & Type Checking -----------------------------------------------
+.mypy_cache/
+.ruff_cache/
+
+# ---- Environment Variables --------------------------------------------------
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ---- IDE / Editor -----------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ---- Data Files -------------------------------------------------------------
+data/**/*.csv
+data/**/*.xlsx
+data/**/*.json
+data/**/*.parquet
+*.pbix
+
+# ---- Logs -------------------------------------------------------------------
+logs/
+*.log
+
+# ---- Docker -----------------------------------------------------------------
+docker-compose.override.yml
+
+# ---- Database ---------------------------------------------------------------
+*.sql.bak
+*.dump
+
+# ---- OS Generated -----------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Jupyter Notebooks ------------------------------------------------------
+.ipynb_checkpoints/
+
+# ---- Great Expectations -----------------------------------------------------
+great_expectations/uncommitted/
+
+# ---- Airflow ----------------------------------------------------------------
+airflow/logs/
+airflow/plugins/__pycache__/
+
+# ---- Misc -------------------------------------------------------------------
+*.bak
+*.tmp
+*.temp
+.cache/

@@ -1,0 +1,151 @@
+# =============================================================================
+# Retail Data Warehouse & Analytics Platform — Docker Compose
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16 — Primary data warehouse
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16
+    container_name: retail_postgres
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-retail_warehouse}
+      POSTGRES_USER: ${POSTGRES_USER:-retail_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retail_pass_2024}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-retail_user} -d ${POSTGRES_DB:-retail_warehouse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - retail_network
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 — Message broker for Airflow Celery executor & caching
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: retail_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - retail_network
+
+  # ---------------------------------------------------------------------------
+  # FastAPI — Analytics REST API
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: retail_api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+      - ./data:/app/data
+    networks:
+      - retail_network
+
+  # ---------------------------------------------------------------------------
+  # Airflow Webserver — DAG management UI
+  # ---------------------------------------------------------------------------
+  airflow-webserver:
+    image: apache/airflow:2.9.1
+    container_name: retail_airflow_webserver
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-retail_user}:${POSTGRES_PASSWORD:-retail_pass_2024}@postgres:5432/${POSTGRES_DB:-retail_warehouse}
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER:-retail_user}:${POSTGRES_PASSWORD:-retail_pass_2024}@postgres:5432/${POSTGRES_DB:-retail_warehouse}
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY:-change-me-to-a-real-secret-key}
+    command: webserver
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - retail_network
+
+  # ---------------------------------------------------------------------------
+  # Airflow Scheduler — DAG scheduling & task execution
+  # ---------------------------------------------------------------------------
+  airflow-scheduler:
+    image: apache/airflow:2.9.1
+    container_name: retail_airflow_scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-retail_user}:${POSTGRES_PASSWORD:-retail_pass_2024}@postgres:5432/${POSTGRES_DB:-retail_warehouse}
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER:-retail_user}:${POSTGRES_PASSWORD:-retail_pass_2024}@postgres:5432/${POSTGRES_DB:-retail_warehouse}
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    command: scheduler
+    depends_on:
+      airflow-webserver:
+        condition: service_healthy
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    networks:
+      - retail_network
+
+# =============================================================================
+# Named Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  retail_network:
+    driver: bridge
